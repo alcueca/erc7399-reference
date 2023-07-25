@@ -1,25 +1,27 @@
 {
-  "name": "@alcueca/erc3156pp",
+  "name": "erc3156pp",
   "description": "ERC3156++ Reference Implementation",
-  "version": "1.0.0",
+  "version": "0.0.1-alpha.0",
   "author": {
     "name": "alcueca",
     "url": "https://github.com/alcueca"
   },
+  "files": [
+    "/src/*.sol",
+    "/src/**/*.sol",
+    "!/src/test/*"
+  ],
+  "keywords": [
+    "solidity",
+    "ethereum",
+    "smart",
+    "contracts",
+    "security"
+  ],
   "devDependencies": {
     "prettier": "^3.0.0",
     "solhint-community": "^3.6.0"
   },
-  "keywords": [
-    "blockchain",
-    "ethereum",
-    "forge",
-    "foundry",
-    "smart-contracts",
-    "solidity",
-    "template"
-  ],
-  "private": true,
   "scripts": {
     "clean": "rm -rf cache out",
     "lint": "pnpm lint:sol && pnpm prettier:check",
