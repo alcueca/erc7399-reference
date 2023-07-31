@@ -2,8 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { IERC20 } from "../interfaces/IERC20.sol";
-import { IERC3156PPFlashLender } from "../interfaces/IERC3156PPFlashLender.sol";
-
+import { IERC7399 } from "../interfaces/IERC7399.sol";
 
 contract LoanReceiver {
     function retrieve(IERC20 asset) external {
@@ -12,7 +11,7 @@ contract LoanReceiver {
 }
 
 contract FlashBorrower {
-    IERC3156PPFlashLender lender;
+    IERC7399 lender;
     LoanReceiver loanReceiver;
 
     uint256 public flashBalance;
@@ -21,13 +20,23 @@ contract FlashBorrower {
     uint256 public flashAmount;
     uint256 public flashFee;
 
-    constructor (IERC3156PPFlashLender lender_) {
+    constructor(IERC7399 lender_) {
         lender = lender_;
         loanReceiver = new LoanReceiver();
     }
 
     /// @dev ERC-3156++ Flash loan callback
-    function onFlashLoan(address initiator, address paymentReceiver, IERC20 asset, uint256 amount, uint256 fee, bytes calldata data) external returns(bytes memory) {
+    function onCallback(
+        address initiator,
+        address paymentReceiver,
+        IERC20 asset,
+        uint256 amount,
+        uint256 fee,
+        bytes calldata data
+    )
+        external
+        returns (bytes memory)
+    {
         require(msg.sender == address(lender), "FlashBorrower: Untrusted lender");
         require(initiator == address(this), "FlashBorrower: External loan initiator");
         flashInitiator = initiator;
@@ -41,26 +50,46 @@ contract FlashBorrower {
         return abi.encode(data, paymentReceiver, fee);
     }
 
-    function onSteal(address initiator, address paymentReceiver, IERC20 asset, uint256 amount, uint256 fee, bytes calldata data) external returns(bytes memory) {
+    function onSteal(
+        address initiator,
+        address paymentReceiver,
+        IERC20 asset,
+        uint256 amount,
+        uint256 fee,
+        bytes calldata data
+    )
+        external
+        returns (bytes memory)
+    {
         require(msg.sender == address(lender), "FlashBorrower: Untrusted lender");
         require(initiator == address(this), "FlashBorrower: External loan initiator");
         flashInitiator = initiator;
         flashAsset = asset;
         flashAmount = amount;
         flashFee = fee;
-        
+
         // do nothing
 
         return abi.encode(data, paymentReceiver, fee);
     }
 
-    function onReenter(address initiator, address paymentReceiver, IERC20 asset, uint256 amount, uint256 fee, bytes calldata data) external returns(bytes memory) {
+    function onReenter(
+        address initiator,
+        address paymentReceiver,
+        IERC20 asset,
+        uint256 amount,
+        uint256 fee,
+        bytes calldata data
+    )
+        external
+        returns (bytes memory)
+    {
         require(msg.sender == address(lender), "FlashBorrower: Untrusted lender");
         require(initiator == address(this), "FlashBorrower: External loan initiator");
         flashInitiator = initiator;
         flashAsset = asset;
         loanReceiver.retrieve(asset);
-        
+
         flashBorrow(asset, amount * 2);
 
         asset.transfer(paymentReceiver, amount + fee);
@@ -72,15 +101,15 @@ contract FlashBorrower {
         return abi.encode(data, paymentReceiver, fee);
     }
 
-    function flashBorrow(IERC20 asset, uint256 amount) public returns(bytes memory) {
-        return lender.flashLoan(address(loanReceiver), asset, amount, "", this.onFlashLoan);
+    function flashBorrow(IERC20 asset, uint256 amount) public returns (bytes memory) {
+        return lender.flash(address(loanReceiver), asset, amount, "", this.onCallback);
     }
 
-    function flashBorrowAndSteal(IERC20 asset, uint256 amount) public returns(bytes memory) {
-        return lender.flashLoan(address(loanReceiver), asset, amount, "", this.onSteal);
+    function flashBorrowAndSteal(IERC20 asset, uint256 amount) public returns (bytes memory) {
+        return lender.flash(address(loanReceiver), asset, amount, "", this.onSteal);
     }
 
-    function flashBorrowAndReenter(IERC20 asset, uint256 amount) public returns(bytes memory) {
-        return lender.flashLoan(address(loanReceiver), asset, amount, "", this.onReenter);
+    function flashBorrowAndReenter(IERC20 asset, uint256 amount) public returns (bytes memory) {
+        return lender.flash(address(loanReceiver), asset, amount, "", this.onReenter);
     }
 }
