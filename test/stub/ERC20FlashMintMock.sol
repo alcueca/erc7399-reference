@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.4;
 
-import { FlashMinter } from "../FlashMinter.sol";
+import { FlashMinter } from "src/FlashMinter.sol";
 
 contract FlashMinterMock is FlashMinter {
     constructor(string memory name, string memory symbol, uint256 fee) FlashMinter(name, symbol, fee) { }
