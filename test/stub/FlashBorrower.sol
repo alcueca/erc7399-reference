@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.4;
 
-import { IERC20 } from "../interfaces/IERC20.sol";
-import { IERC7399 } from "../interfaces/IERC7399.sol";
+import "erc7399/IERC7399.sol";
+
+import { IERC20 } from "src/interfaces/IERC20.sol";
 
 contract LoanReceiver {
     function retrieve(IERC20 asset) external {
@@ -16,7 +17,7 @@ contract FlashBorrower {
 
     uint256 public flashBalance;
     address public flashInitiator;
-    IERC20 public flashAsset;
+    address public flashAsset;
     uint256 public flashAmount;
     uint256 public flashFee;
 
@@ -29,7 +30,7 @@ contract FlashBorrower {
     function onCallback(
         address initiator,
         address paymentReceiver,
-        IERC20 asset,
+        address asset,
         uint256 amount,
         uint256 fee,
         bytes calldata data
@@ -43,9 +44,9 @@ contract FlashBorrower {
         flashAsset = asset;
         flashAmount = amount;
         flashFee = fee;
-        loanReceiver.retrieve(asset);
+        loanReceiver.retrieve(IERC20(asset));
         flashBalance = IERC20(asset).balanceOf(address(this));
-        asset.transfer(paymentReceiver, amount + fee);
+        IERC20(asset).transfer(paymentReceiver, amount + fee);
 
         return abi.encode(data, paymentReceiver, fee);
     }
@@ -53,7 +54,7 @@ contract FlashBorrower {
     function onSteal(
         address initiator,
         address paymentReceiver,
-        IERC20 asset,
+        address asset,
         uint256 amount,
         uint256 fee,
         bytes calldata data
@@ -76,7 +77,7 @@ contract FlashBorrower {
     function onReenter(
         address initiator,
         address paymentReceiver,
-        IERC20 asset,
+        address asset,
         uint256 amount,
         uint256 fee,
         bytes calldata data
@@ -88,11 +89,11 @@ contract FlashBorrower {
         require(initiator == address(this), "FlashBorrower: External loan initiator");
         flashInitiator = initiator;
         flashAsset = asset;
-        loanReceiver.retrieve(asset);
+        loanReceiver.retrieve(IERC20(asset));
 
         flashBorrow(asset, amount * 2);
 
-        asset.transfer(paymentReceiver, amount + fee);
+        IERC20(asset).transfer(paymentReceiver, amount + fee);
 
         // flashBorrow will have initialized these
         flashAmount += amount;
@@ -101,15 +102,15 @@ contract FlashBorrower {
         return abi.encode(data, paymentReceiver, fee);
     }
 
-    function flashBorrow(IERC20 asset, uint256 amount) public returns (bytes memory) {
+    function flashBorrow(address asset, uint256 amount) public returns (bytes memory) {
         return lender.flash(address(loanReceiver), asset, amount, "", this.onCallback);
     }
 
-    function flashBorrowAndSteal(IERC20 asset, uint256 amount) public returns (bytes memory) {
+    function flashBorrowAndSteal(address asset, uint256 amount) public returns (bytes memory) {
         return lender.flash(address(loanReceiver), asset, amount, "", this.onSteal);
     }
 
-    function flashBorrowAndReenter(IERC20 asset, uint256 amount) public returns (bytes memory) {
+    function flashBorrowAndReenter(address asset, uint256 amount) public returns (bytes memory) {
         return lender.flash(address(loanReceiver), asset, amount, "", this.onReenter);
     }
 }

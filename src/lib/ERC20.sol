@@ -17,7 +17,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity  ^0.8.0;
+pragma solidity  ^0.8.4;
 import { IERC20 } from "../interfaces/IERC20.sol";
 
 contract ERC20 is IERC20 {
@@ -25,7 +25,7 @@ contract ERC20 is IERC20 {
     mapping (address => uint256)                      internal  _balanceOf;
     mapping (address => mapping (address => uint256)) internal  _allowance;
     string                                            public    symbol;
-    uint256                                           public    decimals = 18; // standard token precision. override to customize
+    uint8                                             public    decimals = 18; // standard token precision. override to customize
     string                                            public    name = "";     // Optional token name
 
     constructor(string memory name_, string memory symbol_) {
