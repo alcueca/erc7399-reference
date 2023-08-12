@@ -4,68 +4,70 @@ pragma solidity ^0.8.4;
 import "erc7399/IERC7399.sol";
 
 import { IERC20 } from "./interfaces/IERC20.sol";
-import { UnsupportedToken, InsufficientBalance, OnlyOwner } from "./lib/Errors.sol";
+import { InsufficientBalance, OnlyOwner } from "./lib/Errors.sol";
 
 /**
  * @author Alberto Cuesta Cañada
- * @dev Minimal {ERC7399} contract that allows flash lending of a single asset for a fixed fee.
+ * @dev Minimal {ERC7399} contract that allows flash lending of a multiple assets for a fixed fee.
  */
-contract ERC7399Lender is IERC7399 {
+contract ERC7399MultiLender is IERC7399 {
     event Flash(IERC20 indexed asset, uint256 amount, uint256 fee);
+    event Fund(IERC20 indexed asset, uint256 amount);
+    event Defund(IERC20 indexed asset, uint256 amount);
 
     address public immutable owner;
-    IERC20 public immutable asset;
     uint256 public immutable fee; //  1 == 0.01 %.
-    uint256 public reserves;
+    mapping (IERC20 asset => uint256 balance) public reserves;
 
     /**
-     * @param asset_ Asset supported for flash lending
+     * @param asset Asset supported for flash lending
      * @param fee_ Fee charged on flash loans
      */
-    constructor(IERC20 asset_, uint256 fee_) {
+    constructor(IERC20 asset, uint256 fee_) {
         owner = msg.sender;
-        asset = asset_;
+        asset = asset;
         fee = fee_;
-
-        // Fund the contract with all the `asset` from the deployer;
-        asset_.transferFrom(msg.sender, address(this), asset_.balanceOf(msg.sender));
     }
 
-    /// @dev Revert on unsuppoerted assets
-    modifier isSupported(address asset_) {
-        if (address(asset) != asset_) {
-            revert UnsupportedToken(asset_);
-        }
-        _;
+    /// @dev Add assets to this contract. The assets must have been transferred previous to this call.
+    /// @param asset The asset to add.
+    /// @param amount The amount of asset to add.
+    function fund(IERC20 asset, uint256 amount) external {
+        _acceptTransfer(asset, amount);
+        emit Fund(asset, amount);
     }
 
-    /// @dev Shutdown the lender and remove all assets
-    function end() external {
+    /// @dev Remove assets from this contract
+    /// @param asset The assets lent
+    function defund(IERC20 asset) external {
         if (msg.sender != owner) {
             revert OnlyOwner(msg.sender, owner);
         }
-        asset.transfer(owner, asset.balanceOf(address(this)));
+        delete reserves[asset];
+
+        uint256 amount = asset.balanceOf(address(this));
+        asset.transfer(owner, amount);
+        emit Defund(asset, amount);
     }
 
     /// @inheritdoc IERC7399
-    function maxFlashLoan(address asset_) isSupported(asset_) external view returns (uint256) {
-        return _maxFlashLoan();
+    function maxFlashLoan(address asset) external view returns (uint256) {
+        return _maxFlashLoan(IERC20(asset));
     }
 
     /// @inheritdoc IERC7399
-    function flashFee(address asset_, uint256 amount) isSupported(asset_) external view returns (uint256) {
-        return amount <= reserves ? _flashFee(amount) : type(uint256).max;
+    function flashFee(address asset, uint256 amount) external view returns (uint256) {
+        return amount <= _maxFlashLoan(IERC20(asset)) ? _flashFee(amount) : type(uint256).max;
     }
 
     /// @inheritdoc IERC7399
     function flash(
         address loanReceiver,
-        address asset_,
+        address asset,
         uint256 amount,
         bytes calldata data,
         function(address, address, address, uint256, uint256, bytes memory) external returns (bytes memory) callback
     )
-        isSupported(asset_) // Revert on unsupported assets
         external
         returns (bytes memory)
     {
@@ -73,15 +75,15 @@ contract ERC7399Lender is IERC7399 {
         uint256 fee_ = _flashFee(amount);
 
         // Transfer the loan to the loan receiver
-        _serveLoan(loanReceiver, amount);
+        _serveLoan(loanReceiver, IERC20(asset), amount);
 
         // Call the callback on the callback receiver
-        bytes memory result = callback(msg.sender, _repayTo(), asset_, amount, fee_, data);
+        bytes memory result = callback(msg.sender, _repayTo(), asset, amount, fee_, data);
 
         // Verify and accept the repayment
-        _acceptTransfer(fee_);
+        _acceptTransfer(IERC20(asset), fee_);
 
-        emit Flash(IERC20(asset_), amount, fee_);
+        emit Flash(IERC20(asset), amount, fee);
 
         // Return the data from the callback
         return result;
@@ -95,15 +97,17 @@ contract ERC7399Lender is IERC7399 {
     }
 
     /// @dev The maximum flash loan of `asset` that can be served.
+    /// @param asset The assets lent
     /// @return The maximum flash loan of `asset` that can be served.
-    function _maxFlashLoan() internal view returns (uint256) {
-        return reserves;
+    function _maxFlashLoan(IERC20 asset) internal view returns (uint256) {
+        return reserves[asset];
     }
 
     /// @dev Transfer the loan to the loan receiver.
     /// @param loanReceiver The receiver of the loan assets.
+    /// @param asset The assets lent
     /// @param amount The amount of assets lent.
-    function _serveLoan(address loanReceiver, uint256 amount) internal {
+    function _serveLoan(address loanReceiver, IERC20 asset, uint256 amount) internal {
         asset.transfer(loanReceiver, amount);
     }
 
@@ -112,14 +116,14 @@ contract ERC7399Lender is IERC7399 {
         return address(this);
     }
 
-    /// @dev Verify that a transfer to this contract happened.
-    function _acceptTransfer(uint256 fee_) internal {
-        uint256 expectedReserves = reserves + fee_;
+    /// @dev Verify that the repayment happened. Make sure the repayment wasn't used for anything else.
+    function _acceptTransfer(IERC20 asset, uint256 fee_) internal {
+        uint256 expectedReserves = reserves[asset] + fee_;
         uint256 currentReserves = asset.balanceOf(address(this));
         
         // We do not accept donations for security reasons.
         // Excess assets can be removed by using `flash`.
-        reserves = expectedReserves;
+        reserves[asset] = expectedReserves;
 
         if (currentReserves < expectedReserves) {
             revert InsufficientBalance({ expected: expectedReserves, balance: currentReserves });

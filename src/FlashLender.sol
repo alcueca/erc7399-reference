@@ -8,7 +8,7 @@ import { UnsupportedToken, InsufficientBalance } from "./lib/Errors.sol";
 
 /**
  * @author Alberto Cuesta Cañada
- * @dev Extension of {ERC20} that allows flash lending.
+ * @dev Contract implementing {ERC7399} for flash lending.
  */
 contract FlashLender is IERC7399 {
     struct AssetData {
