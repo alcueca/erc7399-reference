@@ -79,7 +79,7 @@ contract ERC7399Lender is IERC7399 {
     {
         // Calculate the fee to charge for the loan
         uint256 fee_ = _flashFee(amount);
-
+        
         // Transfer the loan to the loan receiver
         _serveLoan(loanReceiver, amount);
 
@@ -87,7 +87,7 @@ contract ERC7399Lender is IERC7399 {
         bytes memory result = callback(msg.sender, _repayTo(), asset_, amount, fee_, data);
 
         // Verify and accept the repayment
-        _acceptTransfer(fee_);
+        _acceptTransfer(amount + fee);
 
         emit Flash(IERC20(asset_), amount, fee_);
 
@@ -112,6 +112,7 @@ contract ERC7399Lender is IERC7399 {
     /// @param loanReceiver The receiver of the loan assets.
     /// @param amount The amount of assets lent.
     function _serveLoan(address loanReceiver, uint256 amount) internal {
+        reserves -= amount;
         asset.transfer(loanReceiver, amount);
     }
 
@@ -121,8 +122,8 @@ contract ERC7399Lender is IERC7399 {
     }
 
     /// @dev Verify that a transfer to this contract happened.
-    function _acceptTransfer(uint256 fee_) internal {
-        uint256 expectedReserves = reserves + fee_;
+    function _acceptTransfer(uint256 amount) internal {
+        uint256 expectedReserves = reserves + amount;
         uint256 currentReserves = asset.balanceOf(address(this));
         
         // We do not accept donations for security reasons.
