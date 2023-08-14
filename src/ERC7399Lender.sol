@@ -12,6 +12,8 @@ import { UnsupportedToken, InsufficientBalance, OnlyOwner } from "./lib/Errors.s
  */
 contract ERC7399Lender is IERC7399 {
     event Flash(IERC20 indexed asset, uint256 amount, uint256 fee);
+    event Fund(uint256 amount);
+    event Defund(uint256 amount);
 
     address public immutable owner;
     IERC20 public immutable asset;
@@ -26,9 +28,6 @@ contract ERC7399Lender is IERC7399 {
         owner = msg.sender;
         asset = asset_;
         fee = fee_;
-
-        // Fund the contract with all the `asset` from the deployer;
-        asset_.transferFrom(msg.sender, address(this), asset_.balanceOf(msg.sender));
     }
 
     /// @dev Revert on unsuppoerted assets
@@ -39,12 +38,21 @@ contract ERC7399Lender is IERC7399 {
         _;
     }
 
-    /// @dev Shutdown the lender and remove all assets
-    function end() external {
+    /// @dev Add funds to this contract. The assets must have been transferred previous to this call.
+    /// @param amount The amount of asset to add.
+    function fund(uint256 amount) external {
+        _acceptTransfer(amount);
+        emit Fund(amount);
+    }
+
+    /// @dev Remove all funds from this contract
+    function defund() external {
         if (msg.sender != owner) {
             revert OnlyOwner(msg.sender, owner);
         }
-        asset.transfer(owner, asset.balanceOf(address(this)));
+        uint256 amount = asset.balanceOf(address(this));
+        asset.transfer(owner, amount);
+        emit Defund(amount);
     }
 
     /// @inheritdoc IERC7399
