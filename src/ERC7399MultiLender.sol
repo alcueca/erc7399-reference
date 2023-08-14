@@ -20,12 +20,10 @@ contract ERC7399MultiLender is IERC7399 {
     mapping (IERC20 asset => uint256 balance) public reserves;
 
     /**
-     * @param asset Asset supported for flash lending
      * @param fee_ Fee charged on flash loans
      */
-    constructor(IERC20 asset, uint256 fee_) {
+    constructor(uint256 fee_) {
         owner = msg.sender;
-        asset = asset;
         fee = fee_;
     }
 
@@ -108,6 +106,7 @@ contract ERC7399MultiLender is IERC7399 {
     /// @param asset The assets lent
     /// @param amount The amount of assets lent.
     function _serveLoan(address loanReceiver, IERC20 asset, uint256 amount) internal {
+        reserves[asset] -= amount;
         asset.transfer(loanReceiver, amount);
     }
 
@@ -117,8 +116,8 @@ contract ERC7399MultiLender is IERC7399 {
     }
 
     /// @dev Verify that the repayment happened. Make sure the repayment wasn't used for anything else.
-    function _acceptTransfer(IERC20 asset, uint256 fee_) internal {
-        uint256 expectedReserves = reserves[asset] + fee_;
+    function _acceptTransfer(IERC20 asset, uint256 amount) internal {
+        uint256 expectedReserves = reserves[asset] + amount;
         uint256 currentReserves = asset.balanceOf(address(this));
         
         // We do not accept donations for security reasons.
