@@ -12,7 +12,7 @@ import { UnsupportedToken, InsufficientBalance, OnlyOwner } from "./lib/Errors.s
  */
 contract ERC7399Lender is IERC7399 {
     event Flash(IERC20 indexed asset, uint256 amount, uint256 fee);
-    event Fund(uint256 amount);
+    event Sync();
     event Defund(uint256 amount);
 
     address public immutable owner;
@@ -39,10 +39,9 @@ contract ERC7399Lender is IERC7399 {
     }
 
     /// @dev Add funds to this contract. The assets must have been transferred previous to this call.
-    /// @param amount The amount of asset to add.
-    function sync(uint256 amount) external {
+    function sync() external {
         reserves = asset.balanceOf(address(this));
-        emit Fund(amount);
+        emit Sync();
     }
 
     /// @dev Remove all funds from this contract
