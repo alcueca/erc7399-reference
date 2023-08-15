@@ -29,7 +29,7 @@ contract ERC7399LenderTest is PRBTest, StdCheats {
         borrower = new FlashBorrower(lender);
 
         IERC20(asset).transfer(address(lender), reserves); // Keeping 1e18 for the flash fee.
-        lender.sync(reserves);
+        lender.sync();
     }
 
     /// @dev Simple flash loan test.
