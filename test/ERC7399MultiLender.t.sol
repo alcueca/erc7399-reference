@@ -47,7 +47,8 @@ contract ERC7399MultiLenderTest is PRBTest, StdCheats {
         assertEq(borrower.flashInitiator(), address(borrower));
         assertEq(address(borrower.flashAsset()), address(asset));
         assertEq(borrower.flashAmount(), loan);
-        assertEq(borrower.flashBalance(), loan + flashFee); // The amount we transferred to pay for fees, plus the amount we
+        assertEq(borrower.flashBalance(), loan + flashFee); // The amount we transferred to pay for fees, plus the
+            // amount we
             // borrowed
         assertEq(borrower.flashFee(), flashFee);
         assertEq(IERC20(asset).balanceOf(address(lender)), lenderBalance + flashFee);

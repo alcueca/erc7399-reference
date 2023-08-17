@@ -17,24 +17,25 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity  ^0.8.4;
+pragma solidity >=0.8.19;
+
 import { IERC20 } from "../interfaces/IERC20.sol";
 
 contract ERC20 is IERC20 {
-    uint256                                           internal  _totalSupply;
-    mapping (address => uint256)                      internal  _balanceOf;
-    mapping (address => mapping (address => uint256)) internal  _allowance;
-    string                                            public    symbol;
-    uint8                                             public    decimals = 18; // standard token precision. override to customize
-    string                                            public    name = "";     // Optional token name
+    uint256 internal _totalSupply;
+    mapping(address => uint256) internal _balanceOf;
+    mapping(address => mapping(address => uint256)) internal _allowance;
+    string public symbol;
+    uint8 public decimals = 18; // standard token precision. override to customize
+    string public name = ""; // Optional token name
 
     constructor(string memory name_, string memory symbol_) {
         name = name_;
         symbol = symbol_;
     }
 
-    event Mint(address indexed dst, uint wad);
-    event Burn(address indexed src, uint wad);
+    event Mint(address indexed dst, uint256 wad);
+    event Burn(address indexed src, uint256 wad);
 
     function totalSupply() public view returns (uint256) {
         return _totalSupply;
@@ -48,17 +49,17 @@ contract ERC20 is IERC20 {
         return _allowance[owner][spender];
     }
 
-    function approve(address spender, uint wad) public returns (bool) {
+    function approve(address spender, uint256 wad) public returns (bool) {
         return _approve(msg.sender, spender, wad);
     }
 
-    function transfer(address dst, uint wad) external returns (bool) {
+    function transfer(address dst, uint256 wad) external returns (bool) {
         return transferFrom(msg.sender, dst, wad);
     }
 
-    function transferFrom(address src, address dst, uint wad) public returns (bool) {
+    function transferFrom(address src, address dst, uint256 wad) public returns (bool) {
         uint256 allowed = _allowance[src][msg.sender];
-        if (src != msg.sender && allowed != type(uint).max) {
+        if (src != msg.sender && allowed != type(uint256).max) {
             require(allowed >= wad, "ERC20: insufficient-approval");
             _approve(src, msg.sender, allowed - wad);
         }
@@ -72,19 +73,19 @@ contract ERC20 is IERC20 {
         return true;
     }
 
-    function _approve(address owner, address spender, uint wad) internal returns (bool) {
+    function _approve(address owner, address spender, uint256 wad) internal returns (bool) {
         _allowance[owner][spender] = wad;
         emit Approval(owner, spender, wad);
         return true;
     }
 
-    function _mint(address dst, uint wad) internal {
+    function _mint(address dst, uint256 wad) internal {
         _balanceOf[dst] = _balanceOf[dst] + wad;
         _totalSupply = _totalSupply + wad;
         emit Mint(dst, wad);
     }
 
-    function _burn(address src, uint wad) internal {
+    function _burn(address src, uint256 wad) internal {
         require(_balanceOf[src] >= wad, "ERC20: insufficient-balance");
         _balanceOf[src] = _balanceOf[src] - wad;
         _totalSupply = _totalSupply - wad;

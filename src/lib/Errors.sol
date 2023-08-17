@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity >=0.8.19;
 
 error OnlyOwner(address caller, address owner);
 error UnsupportedToken(address token);
