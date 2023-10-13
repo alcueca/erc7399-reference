@@ -12,7 +12,7 @@ import { IERC20 } from "../src/interfaces/IERC20.sol";
 
 /// @dev If this is your first time with Forge, read this tutorial in the Foundry Book:
 /// https://book.getfoundry.sh/forge/writing-tests
-contract FlashLenderTest is PRBTest, StdCheats {
+contract ERC7399LenderTest is PRBTest, StdCheats {
     ERC7399Lender internal lender;
     FlashBorrower internal borrower;
     address internal asset;
@@ -29,7 +29,7 @@ contract FlashLenderTest is PRBTest, StdCheats {
         borrower = new FlashBorrower(lender);
 
         IERC20(asset).transfer(address(lender), reserves); // Keeping 1e18 for the flash fee.
-        lender.fund(reserves);
+        lender.sync();
     }
 
     /// @dev Simple flash loan test.
@@ -44,7 +44,8 @@ contract FlashLenderTest is PRBTest, StdCheats {
         assertEq(borrower.flashInitiator(), address(borrower));
         assertEq(address(borrower.flashAsset()), address(asset));
         assertEq(borrower.flashAmount(), loan);
-        assertEq(borrower.flashBalance(), loan + flashFee); // The amount we transferred to pay for fees, plus the amount we
+        assertEq(borrower.flashBalance(), loan + flashFee); // The amount we transferred to pay for fees, plus the
+            // amount we
             // borrowed
         assertEq(borrower.flashFee(), flashFee);
         assertEq(IERC20(asset).balanceOf(address(lender)), lenderBalance + flashFee);
